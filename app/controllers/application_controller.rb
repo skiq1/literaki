@@ -1,7 +1,28 @@
-class ApplicationController < ActionController::Base
-  # Only allow modern browsers supporting webp images, web push, badges, import maps, CSS nesting, and CSS :has.
-  allow_browser versions: :modern
+class ApplicationController < ActionController::API
+  attr_reader :current_user
 
-  # Changes to the importmap will invalidate the etag for HTML responses
-  stale_when_importmap_changes
+  rescue_from ActiveRecord::RecordNotFound, with: :render_not_found
+
+  private
+
+  def authenticate_user!
+    token = bearer_token
+    @current_user = token.present? ? User.find_by(api_token: token) : nil
+
+    render json: { error: "Unauthorized" }, status: :unauthorized unless @current_user
+  end
+
+  def bearer_token
+    header = request.headers["Authorization"].to_s
+    match = header.match(/\ABearer (.+)\z/)
+    match&.[](1)
+  end
+
+  def render_not_found
+    render json: { errors: ["Not found"] }, status: :not_found
+  end
+
+  def render_errors(errors, status: :unprocessable_entity)
+    render json: { errors: Array(errors) }, status: status
+  end
 end
