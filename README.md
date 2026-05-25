@@ -24,6 +24,18 @@ Nie ma logowania emailem i hasłem. Klient tworzy sesję przez username, a API z
 Authorization: Bearer TOKEN
 ```
 
+Pełna dokumentacja kontraktów API znajduje się w [docs/API.md](docs/API.md).
+
+## Panel administracyjny
+
+Prosty, niezabezpieczony panel testowo-administracyjny jest dostępny pod:
+
+```text
+http://localhost:3000/admin
+```
+
+Panel pozwala podejrzeć użytkowników, tokeny, gry, graczy, racki, planszę, worek liter i historię ruchów. Jest przeznaczony do lokalnego testowania MVP.
+
 ## Przykłady curl
 
 Utworzenie użytkownika przez username:
@@ -98,6 +110,8 @@ curl -s http://localhost:3000/api/v1/games/1 \
 - `POST /api/v1/games/:id/start`
 - `GET /api/v1/games/:game_id/moves`
 - `POST /api/v1/games/:game_id/moves`
+- `GET /admin`
+- `GET /admin/games/:id`
 
 ## Zasady MVP
 

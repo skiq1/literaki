@@ -1,5 +1,7 @@
 Rails.application.routes.draw do
   get "up" => "rails/health#show", as: :rails_health_check
+  get "admin", to: "admin/dashboard#index"
+  get "admin/games/:id", to: "admin/dashboard#show_game", as: :admin_game
 
   namespace :api do
     namespace :v1 do
