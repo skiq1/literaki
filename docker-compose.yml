@@ -1,0 +1,30 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: literaki-app
+    restart: unless-stopped
+    environment:
+      RAILS_ENV: production
+      RAILS_MASTER_KEY: "${RAILS_MASTER_KEY:?RAILS_MASTER_KEY is required}"
+      APP_HOST: literaki.skiq.pl
+      SOLID_QUEUE_IN_PUMA: "true"
+    volumes:
+      - rails_storage:/rails/storage
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.literaki.rule=Host(`literaki.skiq.pl`)"
+      - "traefik.http.routers.literaki.entrypoints=websecure"
+      - "traefik.http.routers.literaki.tls=true"
+      - "traefik.http.routers.literaki.tls.certresolver=myresolver"
+      - "traefik.http.services.literaki.loadbalancer.server.port=80"
+    networks:
+      - proxy
+
+volumes:
+  rails_storage:
+
+networks:
+  proxy:
+    external: true

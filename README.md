@@ -16,6 +16,30 @@ Domyślne bazy SQLite:
 - development: `storage/development.sqlite3`
 - test: `storage/test.sqlite3`
 
+## Uruchomienie przez Docker Compose
+
+Compose zakłada, że Traefik działa w osobnym projekcie Docker Compose i jest
+podłączony do zewnętrznej sieci Docker o nazwie `proxy`.
+
+```bash
+docker network inspect proxy >/dev/null 2>&1 || docker network create proxy
+export RAILS_MASTER_KEY='wartosc_z_config/master.key'
+docker compose up -d --build
+```
+
+Aplikacja będzie wystawiona przez Traefika pod adresem:
+
+```text
+https://literaki.skiq.pl
+```
+
+Podgląd logów i zatrzymanie:
+
+```bash
+docker compose logs -f app
+docker compose down
+```
+
 ## Autoryzacja
 
 Nie ma logowania emailem i hasłem. Klient tworzy sesję przez username, a API zwraca bezpieczny token. Kolejne requesty używają nagłówka:
