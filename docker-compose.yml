@@ -10,6 +10,9 @@ services:
       RAILS_MASTER_KEY: "${RAILS_MASTER_KEY:?RAILS_MASTER_KEY is required}"
       APP_HOST: literaki.skiq.pl
       SOLID_QUEUE_IN_PUMA: "true"
+      IMPORT_SJP_WORDS: "true"
+      SJP_ZIP_PATH: sjp-20260601.zip
+      SJP_EXPECTED_WORDS_COUNT: "3240240"
     volumes:
       - rails_storage:/rails/storage
     labels:

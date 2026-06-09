@@ -501,6 +501,7 @@ Reguły:
 - Gracz może użyć tylko liter, które ma na racku.
 - Położone litery muszą tworzyć jeden ciąg w wierszu albo kolumnie. Przerwy są dozwolone tylko wtedy, gdy wypełniają je istniejące litery na planszy.
 - Backend wylicza słowa z planszy po ruchu i sprawdza je w tabeli `words` dla języka `pl`.
+- W typowym wdrożeniu tabela `words` jest zasilana przez seed z archiwum SJP.
 - Jeśli któregokolwiek powstałego słowa nie ma w słowniku, ruch jest odrzucany i plansza, rack, worek oraz tura nie są zmieniane.
 - Lista zaakceptowanych słów jest zapisywana w polu `words` ruchu.
 - Po ruchu rack jest uzupełniany do 7 liter, jeśli worek nie jest pusty.

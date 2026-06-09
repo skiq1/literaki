@@ -33,6 +33,23 @@ Aplikacja będzie wystawiona przez Traefika pod adresem:
 https://literaki.skiq.pl
 ```
 
+Przy starcie kontenera entrypoint uruchamia `db:prepare` oraz `db:seed`.
+Seed importuje słownik SJP z `sjp-20260601.zip` do tabeli `words`, jeśli baza
+nie zawiera jeszcze pełnego słownika. Import jest idempotentny; po pierwszym
+pełnym imporcie kolejne starty pomijają czytanie ZIP-a. Plik ZIP musi być
+dostępny w obrazie aplikacji albo pod ścieżką wskazaną przez `SJP_ZIP_PATH`.
+
+Zmienne importu słownika:
+
+- `IMPORT_SJP_WORDS` - domyślnie `true`; ustaw `false`, żeby pominąć import.
+- `SJP_ZIP_PATH` - domyślnie `sjp-20260601.zip` względem katalogu aplikacji.
+- `SJP_ENTRY_NAME` - domyślnie `slowa.txt`.
+- `SJP_EXPECTED_WORDS_COUNT` - domyślnie `3240240`; liczba wpisów w używanej wersji SJP.
+- `SJP_BATCH_SIZE` - rozmiar batcha dla adapterów innych niż SQLite.
+
+W produkcji brak pliku ZIP przy włączonym `IMPORT_SJP_WORDS` przerywa start,
+żeby aplikacja nie działała z niepełnym słownikiem.
+
 Podgląd logów i zatrzymanie:
 
 ```bash
@@ -145,5 +162,6 @@ curl -s http://localhost:3000/api/v1/games/1 \
 - Rack ma 7 liter i po ruchu jest uzupełniany z worka.
 - `place_tiles` liczy punkty jako sumę wartości położonych liter.
 - `place_tiles` wylicza słowa z planszy i odrzuca ruch, jeśli któregokolwiek słowa nie ma w tabeli `words`.
+- Tabela `words` jest zasilana przez seed z archiwum SJP.
 - Rack przeciwnika nie jest zwracany w odpowiedziach API.
 - Klient nie jest źródłem prawdy dla wyniku, tury ani zwycięzcy.
