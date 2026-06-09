@@ -144,5 +144,6 @@ curl -s http://localhost:3000/api/v1/games/1 \
 - Ruch może wykonać tylko aktualny gracz.
 - Rack ma 7 liter i po ruchu jest uzupełniany z worka.
 - `place_tiles` liczy punkty jako sumę wartości położonych liter.
+- `place_tiles` wylicza słowa z planszy i odrzuca ruch, jeśli któregokolwiek słowa nie ma w tabeli `words`.
 - Rack przeciwnika nie jest zwracany w odpowiedziach API.
 - Klient nie jest źródłem prawdy dla wyniku, tury ani zwycięzcy.

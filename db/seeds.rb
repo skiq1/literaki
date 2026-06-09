@@ -7,6 +7,13 @@
   SOK
   MAK
   TOR
+  OKO
+  PIES
+  RYBA
+  WODA
+  LATO
+  ZIMA
+  TEST
   MAMA
   TATA
 ].each do |value|

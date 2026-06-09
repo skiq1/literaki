@@ -58,13 +58,14 @@ RSpec.describe "Moves API", type: :request do
   end
 
   it "places tiles and updates board, score, rack and turn" do
+    Word.create!(value: "KOT", language: "pl")
     game = started_game
     player = game.game_players.find_by!(user: user)
     player.update!(rack: %w[K O T A E R S])
     game.update!(bag: %w[Z W Y])
 
     post "/api/v1/games/#{game.id}/moves",
-      params: { move_type: "place_tiles", tiles: [{ letter: "K", x: 7, y: 7 }, { letter: "O", x: 8, y: 7 }, { letter: "T", x: 9, y: 7 }] },
+      params: { move_type: "place_tiles", tiles: [ { letter: "K", x: 7, y: 7 }, { letter: "O", x: 8, y: 7 }, { letter: "T", x: 9, y: 7 } ] },
       headers: auth_headers(user)
 
     expect(response).to have_http_status(:created)
@@ -75,12 +76,27 @@ RSpec.describe "Moves API", type: :request do
     expect(game.current_turn_user_id).to eq(opponent.id)
   end
 
+  it "rejects word missing from dictionary" do
+    game = started_game
+    player = game.game_players.find_by!(user: user)
+    player.update!(rack: %w[K O A E R S T])
+
+    post "/api/v1/games/#{game.id}/moves",
+      params: { move_type: "place_tiles", tiles: [ { letter: "K", x: 7, y: 7 }, { letter: "O", x: 8, y: 7 } ] },
+      headers: auth_headers(user)
+
+    expect(response).to have_http_status(:unprocessable_entity)
+    expect(json["errors"]).to include("KO is not in dictionary")
+    expect(game.reload.board).to eq({})
+    expect(player.reload.rack).to eq(%w[K O A E R S T])
+  end
+
   it "rejects tile outside rack" do
     game = started_game
     game.game_players.find_by!(user: user).update!(rack: %w[A E R K O T S])
 
     post "/api/v1/games/#{game.id}/moves",
-      params: { move_type: "place_tiles", tiles: [{ letter: "Z", x: 7, y: 7 }] },
+      params: { move_type: "place_tiles", tiles: [ { letter: "Z", x: 7, y: 7 } ] },
       headers: auth_headers(user)
 
     expect(response).to have_http_status(:unprocessable_entity)
@@ -93,7 +109,7 @@ RSpec.describe "Moves API", type: :request do
     game.game_players.find_by!(user: user).update!(rack: %w[K O T A E R S])
 
     post "/api/v1/games/#{game.id}/moves",
-      params: { move_type: "place_tiles", tiles: [{ letter: "K", x: 7, y: 7 }] },
+      params: { move_type: "place_tiles", tiles: [ { letter: "K", x: 7, y: 7 } ] },
       headers: auth_headers(user)
 
     expect(response).to have_http_status(:unprocessable_entity)
@@ -105,7 +121,7 @@ RSpec.describe "Moves API", type: :request do
     game.game_players.find_by!(user: user).update!(rack: %w[K O T A E R S])
 
     post "/api/v1/games/#{game.id}/moves",
-      params: { move_type: "place_tiles", tiles: [{ letter: "K", x: 15, y: 7 }] },
+      params: { move_type: "place_tiles", tiles: [ { letter: "K", x: 15, y: 7 } ] },
       headers: auth_headers(user)
 
     expect(response).to have_http_status(:unprocessable_entity)

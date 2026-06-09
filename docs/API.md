@@ -130,7 +130,7 @@ Typowe statusy:
   "tiles": [
     { "letter": "K", "x": 7, "y": 7 }
   ],
-  "words": [],
+  "words": ["KOT"],
   "score": 2,
   "created_at": "2026-05-25T12:00:00.000Z"
 }
@@ -476,7 +476,7 @@ Błędy specyficzne:
 
 ### place_tiles
 
-Kładzie litery na planszy i nalicza punkty jako sumę wartości położonych liter.
+Kładzie litery na planszy, waliduje powstałe słowa w słowniku i nalicza punkty jako sumę wartości położonych liter.
 
 Request:
 
@@ -499,6 +499,10 @@ Reguły:
 - Nie można położyć litery poza planszą.
 - Nie można położyć litery na zajętym polu.
 - Gracz może użyć tylko liter, które ma na racku.
+- Położone litery muszą tworzyć jeden ciąg w wierszu albo kolumnie. Przerwy są dozwolone tylko wtedy, gdy wypełniają je istniejące litery na planszy.
+- Backend wylicza słowa z planszy po ruchu i sprawdza je w tabeli `words` dla języka `pl`.
+- Jeśli któregokolwiek powstałego słowa nie ma w słowniku, ruch jest odrzucany i plansza, rack, worek oraz tura nie są zmieniane.
+- Lista zaakceptowanych słów jest zapisywana w polu `words` ruchu.
 - Po ruchu rack jest uzupełniany do 7 liter, jeśli worek nie jest pusty.
 - Wynik jest liczony po stronie backendu.
 
@@ -508,6 +512,9 @@ Błędy specyficzne:
 - `422` z `"Tile is outside the board"`.
 - `422` z `"Tile position is already occupied"`.
 - `422` z `"Rack does not include all requested tiles"`.
+- `422` z `"Tiles must be in a single row or column"`.
+- `422` z `"Tiles must form one contiguous word"`.
+- `422` z `"<WORD> is not in dictionary"`.
 
 Przykład:
 
