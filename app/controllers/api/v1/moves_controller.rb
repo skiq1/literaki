@@ -14,6 +14,11 @@ module Api
         result = Moves::CreateService.new(game: @game, user: current_user, params: move_params.to_h).call
 
         if result.success?
+          Games::BroadcastService.call(
+            game: @game,
+            event: Games::BroadcastService::EVENT_MOVE_CREATED,
+            move: result.value
+          )
           render json: MoveSerializer.render(result.value), status: :created
         else
           render_errors(result.errors)
@@ -29,7 +34,7 @@ module Api
       def ensure_player!
         return if @game.game_players.exists?(user: current_user)
 
-        render_errors(["Forbidden"], status: :forbidden)
+        render_errors([ "Forbidden" ], status: :forbidden)
       end
 
       def move_params

@@ -10,6 +10,12 @@ Base URL lokalnie:
 http://localhost:3000
 ```
 
+WebSocket URL lokalnie:
+
+```text
+ws://localhost:3000/cable
+```
+
 Wersja API:
 
 ```text
@@ -30,6 +36,97 @@ Authorization: Bearer <token>
 ```
 
 Token jest generowany przez backend w `POST /api/v1/auth`. Username jest wyłącznie nazwą wyświetlaną i nie jest credentialem. Każde poprawne wywołanie `POST /api/v1/auth` może utworzyć nowego użytkownika z nowym tokenem.
+
+## Realtime i Polling
+
+Aplikacja udostępnia realtime przez Action Cable na ścieżce `/cable`. WebSockety są opcjonalną warstwą aktualizacji stanu gry i lobby gry; wszystkie endpointy HTTP opisane niżej pozostają źródłem prawdy oraz fallbackiem pollingowym.
+
+Klient powinien:
+
+- użyć WebSocketów, jeśli połączenie z `/cable` zostanie zestawione,
+- po rozłączeniu albo błędzie wrócić do pollingu przez `GET /api/v1/games/:id` oraz, gdy potrzebna jest sama historia, `GET /api/v1/games/:game_id/moves`,
+- nadal wykonywać mutacje przez HTTP (`join`, `start`, `POST moves`); WebSocket służy tylko do odbioru aktualizacji.
+
+Autoryzacja WebSocket:
+
+```text
+ws://localhost:3000/cable?token=<token>
+```
+
+Backend akceptuje również nagłówek `Authorization: Bearer <token>`, jeśli klient WebSocket go obsługuje.
+
+### GameChannel
+
+Subskrypcja:
+
+```json
+{
+  "channel": "GameChannel",
+  "game_id": 1
+}
+```
+
+Subskrypcja jest akceptowana tylko dla użytkownika, który jest graczem w danej grze. Każdy gracz dostaje prywatny stream `game:<game_id>:user:<user_id>`, dzięki czemu payload może zawierać jego własny `rack` bez ujawniania racka przeciwnika.
+
+Zdarzenia:
+
+- `game.created` po utworzeniu gry,
+- `game.updated` po dołączeniu gracza albo starcie gry,
+- `move.created` po wykonaniu ruchu.
+
+Payload `game.created` i `game.updated`:
+
+```json
+{
+  "event": "game.updated",
+  "game": {
+    "id": 1,
+    "status": "active",
+    "board": {},
+    "players": [],
+    "current_turn_user_id": 1,
+    "winner_id": null,
+    "started_at": "2026-05-25T12:00:00.000Z",
+    "finished_at": null,
+    "moves": []
+  }
+}
+```
+
+Payload `move.created`:
+
+```json
+{
+  "event": "move.created",
+  "game": {
+    "id": 1,
+    "status": "active",
+    "board": {},
+    "players": [],
+    "current_turn_user_id": 2,
+    "winner_id": null,
+    "started_at": "2026-05-25T12:00:00.000Z",
+    "finished_at": null,
+    "moves": []
+  },
+  "move": {
+    "id": 1,
+    "game_id": 1,
+    "user_id": 1,
+    "move_type": "pass",
+    "tiles": [],
+    "words": [],
+    "score": 0,
+    "created_at": "2026-05-25T12:01:00.000Z"
+  }
+}
+```
+
+Polling fallback:
+
+- dla lobby konkretnej gry: odpytywać `GET /api/v1/games/:id`, szczególnie przed startem i po próbie dołączenia drugiego gracza,
+- dla stanu aktywnej gry: odpytywać `GET /api/v1/games/:id`,
+- dla lekkiej synchronizacji historii ruchów: odpytywać `GET /api/v1/games/:game_id/moves`.
 
 ## Format Błędów
 

@@ -1,4 +1,6 @@
 Rails.application.routes.draw do
+  mount ActionCable.server => "/cable"
+
   get "up" => "rails/health#show", as: :rails_health_check
   get "admin", to: "admin/dashboard#index"
   get "admin/games/:id", to: "admin/dashboard#show_game", as: :admin_game

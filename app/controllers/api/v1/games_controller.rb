@@ -12,7 +12,7 @@ module Api
 
       def create
         result = Games::CreateService.new(user: current_user).call
-        render_service_result(result, status: :created)
+        render_service_result(result, status: :created, event: Games::BroadcastService::EVENT_GAME_CREATED)
       end
 
       def show
@@ -21,12 +21,12 @@ module Api
 
       def join
         result = Games::JoinService.new(game: @game, user: current_user).call
-        render_service_result(result)
+        render_service_result(result, event: Games::BroadcastService::EVENT_GAME_UPDATED)
       end
 
       def start
         result = Games::StartService.new(game: @game).call
-        render_service_result(result)
+        render_service_result(result, event: Games::BroadcastService::EVENT_GAME_UPDATED)
       end
 
       private
@@ -38,11 +38,12 @@ module Api
       def ensure_player!
         return if @game.game_players.exists?(user: current_user)
 
-        render_errors(["Forbidden"], status: :forbidden)
+        render_errors([ "Forbidden" ], status: :forbidden)
       end
 
-      def render_service_result(result, status: :ok)
+      def render_service_result(result, status: :ok, event: nil)
         if result.success?
+          Games::BroadcastService.call(game: result.value, event: event) if event
           render json: GameSerializer.new(result.value, current_user: current_user).as_json, status: status
         else
           render_errors(result.errors)
