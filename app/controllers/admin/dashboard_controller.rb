@@ -6,8 +6,9 @@ module Admin
 
     def show_game
       game = Game.includes(:moves, game_players: :user).find(params[:id])
+      Games::ClockService.new(game: game).call
 
-      render html: page("Game ##{game.id}", game_html(game)).html_safe
+      render html: page("Game ##{game.id}", game_html(game.reload)).html_safe
     end
 
     private
@@ -87,6 +88,10 @@ module Admin
           #{stat("Games", Game.count)}
           #{stat("Active games", Game.where(status: "active").count)}
           #{stat("Moves", Move.count)}
+          #{stat("Timed games", Game.where(time_limit_enabled: true).count)}
+          #{stat("Untimed games", Game.where(time_limit_enabled: false).count)}
+          #{stat("Cable adapter", cable_adapter)}
+          #{stat("Queue adapter", queue_adapter)}
         </section>
       HTML
     end
@@ -114,7 +119,9 @@ module Admin
 
     def games_table(games)
       rows = games.map do |game|
-        players = game.game_players.map { |player| "#{player.position}. #{player.user.username} (#{player.score})" }.join("<br>")
+        players = game.game_players.map do |player|
+          "#{player.position}. #{escape(player.user.username)} (#{player.score}, #{format_remaining_time(player)})"
+        end.join("<br>")
 
         <<~HTML
           <tr>
@@ -122,6 +129,8 @@ module Admin
             <td><span class="badge">#{escape(game.status)}</span></td>
             <td>#{players}</td>
             <td>#{escape(game.current_turn_user&.username || "-")}</td>
+            <td>#{time_limit_badge(game)}</td>
+            <td>#{escape(game.turn_started_at&.iso8601 || "-")}<br><span class="muted">deadline: #{escape(deadline_for(game)&.iso8601 || "-")}</span></td>
             <td>#{escape(game.winner&.username || "-")}</td>
             <td>#{game.moves.size}</td>
             <td>#{escape(game.created_at&.iso8601)}</td>
@@ -129,7 +138,7 @@ module Admin
         HTML
       end.join
 
-      table(["ID", "Status", "Players", "Turn", "Winner", "Moves", "Created"], rows)
+      table([ "ID", "Status", "Players", "Turn", "Clock", "Turn timing", "Winner", "Moves", "Created" ], rows)
     end
 
     def words_table(words)
@@ -154,7 +163,13 @@ module Admin
           #{stat("Current turn", game.current_turn_user&.username || "-")}
           #{stat("Winner", game.winner&.username || "-")}
           #{stat("Bag tiles", game.bag.size)}
+          #{stat("Time limit", game.time_limit_enabled? ? "enabled" : "disabled")}
+          #{stat("Turn started", game.turn_started_at&.iso8601 || "-")}
+          #{stat("Turn deadline", deadline_for(game)&.iso8601 || "-")}
+          #{stat("Pass finish", "#{Games::PassStreakService::MAX_CONSECUTIVE_PASSES_PER_PLAYER} per player")}
         </section>
+        <h2>Realtime / Jobs</h2>
+        #{runtime_table}
         <h2>Players</h2>
         #{game_players_table(game)}
         <h2>Board</h2>
@@ -176,11 +191,13 @@ module Admin
             <td>#{player.score}</td>
             <td><code>#{escape(player.rack.join(" "))}</code></td>
             <td>#{player.passed_turns_count}</td>
+            <td>#{format_remaining_time(player)}</td>
+            <td>#{player.remaining_time_ms}</td>
           </tr>
         HTML
       end.join
 
-      table(["Position", "User ID", "Username", "Score", "Rack", "Passes"], rows)
+      table([ "Position", "User ID", "Username", "Score", "Rack", "Passes", "Time", "Time ms" ], rows)
     end
 
     def moves_table(moves)
@@ -197,7 +214,7 @@ module Admin
         HTML
       end.join
 
-      table(["ID", "User ID", "Type", "Score", "Tiles", "Created"], rows)
+      table([ "ID", "User ID", "Type", "Score", "Tiles", "Created" ], rows)
     end
 
     def board_html(board)
@@ -216,6 +233,61 @@ module Admin
       body = rows.presence || %(<tr><td colspan="#{headers.size}" class="muted">No data</td></tr>)
 
       "<table><thead><tr>#{head}</tr></thead><tbody>#{body}</tbody></table>"
+    end
+
+    def runtime_table
+      rows = [
+        [ "Action Cable mount", "/cable" ],
+        [ "Action Cable adapter", cable_adapter ],
+        [ "Active Job adapter", queue_adapter ],
+        [ "Clock sweep job", "Games::ClockSweepJob" ],
+        [ "Clock sweep schedule", recurring_schedule.fetch("sync_game_clocks", {}).fetch("schedule", "-") ],
+        [ "Solid Queue in Puma", ENV.fetch("SOLID_QUEUE_IN_PUMA", "-") ]
+      ].map do |label, value|
+        <<~HTML
+          <tr>
+            <td>#{escape(label)}</td>
+            <td><code>#{escape(value)}</code></td>
+          </tr>
+        HTML
+      end.join
+
+      table([ "Name", "Value" ], rows)
+    end
+
+    def cable_adapter
+      Rails.application.config_for(:cable).fetch("adapter", "-")
+    end
+
+    def queue_adapter
+      Rails.application.config.active_job.queue_adapter.to_s
+    end
+
+    def recurring_schedule
+      Rails.application.config_for(:recurring).to_h
+    rescue RuntimeError
+      {}
+    end
+
+    def time_limit_badge(game)
+      label = game.time_limit_enabled? ? "timed" : "untimed"
+      %(<span class="badge">#{label}</span>)
+    end
+
+    def deadline_for(game)
+      return unless game.time_limit_enabled? && game.turn_started_at && game.current_turn_user_id
+
+      player = game.game_players.find { |game_player| game_player.user_id == game.current_turn_user_id }
+      return unless player
+
+      game.turn_started_at + (player.remaining_time_ms / 1000.0).seconds
+    end
+
+    def format_remaining_time(player)
+      total_seconds = player.remaining_time_ms.to_i / 1000
+      minutes = total_seconds / 60
+      seconds = total_seconds % 60
+      format("%02d:%02d", minutes, seconds)
     end
 
     def escape(value)

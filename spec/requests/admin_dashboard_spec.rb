@@ -11,6 +11,9 @@ RSpec.describe "Admin dashboard", type: :request do
     expect(response.media_type).to eq("text/html")
     expect(response.body).to include("Literaki Admin")
     expect(response.body).to include("marek")
+    expect(response.body).to include("Cable adapter")
+    expect(response.body).to include("Queue adapter")
+    expect(response.body).to include("Timed games")
   end
 
   it "renders game details" do
@@ -22,5 +25,8 @@ RSpec.describe "Admin dashboard", type: :request do
     expect(response).to have_http_status(:ok)
     expect(response.body).to include("Game ##{game.id}")
     expect(response.body).to include("Board")
+    expect(response.body).to include("Realtime / Jobs")
+    expect(response.body).to include("Time limit")
+    expect(response.body).to include("Clock sweep job")
   end
 end

@@ -669,8 +669,9 @@ Response `200 OK`, `text/html`.
 
 Widok zawiera:
 
-- liczby użytkowników, gier, aktywnych gier i ruchów,
-- ostatnie gry z linkami do szczegółów,
+- liczby użytkowników, gier, aktywnych gier, ruchów, gier z limitem czasu i gier bez limitu czasu,
+- adapter Action Cable i adapter kolejki Active Job,
+- ostatnie gry z linkami do szczegółów, aktualną turą, trybem zegara, czasem startu tury i deadline'em,
 - ostatnich użytkowników wraz z tokenami,
 - przykładowy słownik.
 
@@ -694,7 +695,9 @@ Widok zawiera:
 - aktualną turę,
 - zwycięzcę,
 - liczbę liter w worku,
-- graczy wraz z rackami,
+- status limitu czasu, start tury, deadline tury i próg zakończenia po passach,
+- informacje realtime/jobów: ścieżkę `/cable`, adapter Action Cable, adapter Active Job, `Games::ClockSweepJob`, harmonogram `sync_game_clocks` i wartość `SOLID_QUEUE_IN_PUMA`,
+- graczy wraz z rackami, liczbą kolejnych passów i pozostałym czasem,
 - planszę 15x15,
 - historię ruchów,
 - surowy stan gry w JSON.
