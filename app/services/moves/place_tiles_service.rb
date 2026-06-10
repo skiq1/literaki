@@ -27,13 +27,18 @@ module Moves
         rack_without_tiles = Tiles::RackService.remove_letters(game_player.rack, tiles.map { |tile| tile["letter"] })
         updated_rack, updated_bag = Tiles::RackService.refill(rack_without_tiles, game.bag)
 
+        game.game_players.each { |player| player.update!(passed_turns_count: 0) }
         game_player.update!(
           rack: updated_rack,
-          score: game_player.score + score,
-          passed_turns_count: 0
+          score: game_player.score + score
         )
         move = ApplyMoveService.new(game: game, user: user, move_type: "place_tiles", tiles: tiles, words: words, score: score).call.value
-        game.update!(board: updated_board, bag: updated_bag, current_turn_user: next_player)
+        if next_player
+          game.update!(board: updated_board, bag: updated_bag, current_turn_user: next_player, turn_started_at: next_turn_started_at)
+        else
+          game.update!(board: updated_board, bag: updated_bag)
+          Games::FinishService.new(game: game).call
+        end
       end
 
       success(move)
@@ -185,6 +190,10 @@ module Moves
 
     def next_player
       Turns::NextPlayerService.new(game: game, current_user: user).call
+    end
+
+    def next_turn_started_at
+      game.time_limit_enabled? ? Time.current : nil
     end
   end
 end

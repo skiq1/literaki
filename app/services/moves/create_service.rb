@@ -14,14 +14,21 @@ module Moves
     end
 
     def call
-      service_class = SERVICES[params[:move_type]]
+      clock = Games::ClockService.new(game: game).call
+      return clock unless clock.success?
+
+      service_class = SERVICES[move_type]
       return failure("Unsupported move type") unless service_class
 
-      service_class.new(game: game, user: user, params: params).call
+      service_class.new(game: game, user: user, params: params.merge(move_type: move_type)).call
     end
 
     private
 
     attr_reader :game, :user, :params
+
+    def move_type
+      params[:move_type] == "skip" ? "pass" : params[:move_type]
+    end
   end
 end

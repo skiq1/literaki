@@ -4,6 +4,7 @@ module Api
       before_action :authenticate_user!
       before_action :set_game
       before_action :ensure_player!
+      before_action :sync_game_clock
 
       def index
         moves = @game.moves.order(:created_at)
@@ -39,6 +40,19 @@ module Api
 
       def move_params
         params.permit!.to_h.slice("move_type", "tiles")
+      end
+
+      def sync_game_clock
+        previous_status = @game.status
+        previous_turn_user_id = @game.current_turn_user_id
+
+        result = Games::ClockService.new(game: @game).call
+        return unless result.success?
+
+        @game = result.value
+        if @game.status != previous_status || @game.current_turn_user_id != previous_turn_user_id
+          Games::BroadcastService.call(game: @game, event: Games::BroadcastService::EVENT_GAME_UPDATED)
+        end
       end
     end
   end

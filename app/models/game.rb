@@ -9,4 +9,5 @@ class Game < ApplicationRecord
   belongs_to :winner, class_name: "User", optional: true
 
   validates :status, presence: true, inclusion: { in: STATUSES }
+  validates :time_limit_enabled, inclusion: { in: [ true, false ] }
 end

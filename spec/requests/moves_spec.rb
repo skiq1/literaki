@@ -31,6 +31,28 @@ RSpec.describe "Moves API", type: :request do
     expect(game.reload.current_turn_user_id).to eq(opponent.id)
   end
 
+  it "accepts skip as pass move" do
+    game = started_game
+
+    post "/api/v1/games/#{game.id}/moves", params: { move_type: "skip" }, headers: auth_headers(user)
+
+    expect(response).to have_http_status(:created)
+    expect(json["move_type"]).to eq("pass")
+  end
+
+  it "finishes game after both players pass three times in a row" do
+    game = started_game
+
+    3.times do
+      post "/api/v1/games/#{game.id}/moves", params: { move_type: "pass" }, headers: auth_headers(user)
+      post "/api/v1/games/#{game.id}/moves", params: { move_type: "pass" }, headers: auth_headers(opponent)
+    end
+
+    expect(response).to have_http_status(:created)
+    expect(game.reload.status).to eq("finished")
+    expect(game.current_turn_user_id).to be_nil
+  end
+
   it "resign finishes game and sets winner" do
     game = started_game
 
@@ -39,6 +61,16 @@ RSpec.describe "Moves API", type: :request do
     expect(response).to have_http_status(:created)
     expect(game.reload.status).to eq("finished")
     expect(game.winner_id).to eq(opponent.id)
+  end
+
+  it "resign sets opponent as winner even when opponent has no time" do
+    game = started_game
+    game.game_players.find_by!(user: opponent).update!(remaining_time_ms: 0)
+
+    post "/api/v1/games/#{game.id}/moves", params: { move_type: "resign" }, headers: auth_headers(user)
+
+    expect(response).to have_http_status(:created)
+    expect(game.reload.winner_id).to eq(opponent.id)
   end
 
   it "exchanges tiles" do

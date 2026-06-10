@@ -14,8 +14,7 @@ module Moves
       Game.transaction do
         winner = next_player
         move = ApplyMoveService.new(game: game, user: user, move_type: "resign").call.value
-        game.update!(status: "finished", winner: winner, finished_at: Time.current)
-        update_player_statistics(winner)
+        Games::FinishService.new(game: game, winner: winner).call
       end
 
       success(move)
@@ -26,16 +25,7 @@ module Moves
     attr_reader :game, :user
 
     def next_player
-      Turns::NextPlayerService.new(game: game, current_user: user).call
-    end
-
-    def update_player_statistics(winner)
-      game.game_players.includes(:user).each do |game_player|
-        player = game_player.user
-        player.increment!(:games_played)
-        player.increment!(:games_won) if player.id == winner.id
-        player.increment!(:total_score, game_player.score)
-      end
+      game.game_players.detect { |game_player| game_player.user_id != user.id }&.user
     end
   end
 end

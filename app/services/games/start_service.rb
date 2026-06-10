@@ -21,7 +21,8 @@ module Games
           board: {},
           bag: bag,
           current_turn_user: game.game_players.first.user,
-          started_at: Time.current
+          started_at: Time.current,
+          turn_started_at: game.time_limit_enabled? ? Time.current : nil
         )
       end
 

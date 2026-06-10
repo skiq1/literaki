@@ -10,13 +10,14 @@
 #
 # It's strongly recommended that you check this file into your version control system.
 
-ActiveRecord::Schema[8.1].define(version: 2026_05_25_000500) do
+ActiveRecord::Schema[8.1].define(version: 2026_06_10_000100) do
   create_table "game_players", force: :cascade do |t|
     t.datetime "created_at", null: false
     t.integer "game_id", null: false
     t.integer "passed_turns_count", default: 0, null: false
     t.integer "position", null: false
     t.json "rack", default: [], null: false
+    t.integer "remaining_time_ms", default: 600000, null: false
     t.integer "score", default: 0, null: false
     t.datetime "updated_at", null: false
     t.integer "user_id", null: false
@@ -33,6 +34,8 @@ ActiveRecord::Schema[8.1].define(version: 2026_05_25_000500) do
     t.datetime "finished_at"
     t.datetime "started_at"
     t.string "status", default: "waiting", null: false
+    t.boolean "time_limit_enabled", default: true, null: false
+    t.datetime "turn_started_at"
     t.datetime "updated_at", null: false
     t.integer "winner_id"
     t.index ["current_turn_user_id"], name: "index_games_on_current_turn_user_id"

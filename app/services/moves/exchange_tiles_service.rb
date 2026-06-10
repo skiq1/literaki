@@ -19,9 +19,15 @@ module Moves
         drawn, bag_after_draw = Tiles::BagService.draw(game.bag, tiles.size)
         updated_bag = Tiles::BagService.return_tiles(bag_after_draw, tiles)
 
-        game_player.update!(rack: rack_after_removal + drawn, passed_turns_count: 0)
+        game.game_players.each { |player| player.update!(passed_turns_count: 0) }
+        game_player.update!(rack: rack_after_removal + drawn)
         move = ApplyMoveService.new(game: game, user: user, move_type: "exchange_tiles", tiles: tiles).call.value
-        game.update!(bag: updated_bag, current_turn_user: next_player)
+        if next_player
+          game.update!(bag: updated_bag, current_turn_user: next_player, turn_started_at: next_turn_started_at)
+        else
+          game.update!(bag: updated_bag)
+          Games::FinishService.new(game: game).call
+        end
       end
 
       success(move)
@@ -39,6 +45,10 @@ module Moves
 
     def next_player
       Turns::NextPlayerService.new(game: game, current_user: user).call
+    end
+
+    def next_turn_started_at
+      game.time_limit_enabled? ? Time.current : nil
     end
   end
 end

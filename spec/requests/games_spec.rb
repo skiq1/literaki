@@ -9,7 +9,17 @@ RSpec.describe "Games API", type: :request do
 
     expect(response).to have_http_status(:created)
     expect(json["status"]).to eq("waiting")
+    expect(json["time_limit_enabled"]).to be(true)
     expect(json["players"].size).to eq(1)
+  end
+
+  it "allows authenticated user to create a game without time limit" do
+    post "/api/v1/games", params: { time_limit_enabled: false }, headers: auth_headers(user)
+
+    expect(response).to have_http_status(:created)
+    expect(json["time_limit_enabled"]).to be(false)
+    expect(json["current_turn_deadline_at"]).to be_nil
+    expect(json["players"].first["remaining_time_ms"]).to be_nil
   end
 
   it "allows user to join waiting game" do
@@ -59,7 +69,10 @@ RSpec.describe "Games API", type: :request do
     expect(response).to have_http_status(:ok)
     expect(json["status"]).to eq("active")
     expect(json["current_turn_user_id"]).to eq(user.id)
+    expect(json["turn_started_at"]).to be_present
+    expect(json["current_turn_deadline_at"]).to be_present
     expect(json["players"].first["rack"].size).to eq(7)
+    expect(json["players"].first["remaining_time_ms"]).to be <= Games::ClockService::DEFAULT_TIME_LIMIT_MS
     expect(json["players"].second).not_to have_key("rack")
   end
 

@@ -83,6 +83,9 @@ Payload `game.created` i `game.updated`:
     "id": 1,
     "status": "active",
     "board": {},
+    "time_limit_enabled": true,
+    "turn_started_at": "2026-05-25T12:00:00.000Z",
+    "current_turn_deadline_at": "2026-05-25T12:10:00.000Z",
     "players": [],
     "current_turn_user_id": 1,
     "winner_id": null,
@@ -102,6 +105,9 @@ Payload `move.created`:
     "id": 1,
     "status": "active",
     "board": {},
+    "time_limit_enabled": true,
+    "turn_started_at": "2026-05-25T12:00:00.000Z",
+    "current_turn_deadline_at": "2026-05-25T12:10:00.000Z",
     "players": [],
     "current_turn_user_id": 2,
     "winner_id": null,
@@ -189,6 +195,9 @@ Typowe statusy:
     "8,7": "O",
     "9,7": "T"
   },
+  "time_limit_enabled": true,
+  "turn_started_at": "2026-05-25T12:00:00.000Z",
+  "current_turn_deadline_at": "2026-05-25T12:10:00.000Z",
   "players": [
     {
       "id": 1,
@@ -196,6 +205,7 @@ Typowe statusy:
       "score": 5,
       "position": 1,
       "passed_turns_count": 0,
+      "remaining_time_ms": 590000,
       "rack": ["A", "E", "R", "S", "Z", "W", "Y"]
     },
     {
@@ -203,7 +213,8 @@ Typowe statusy:
       "username": "ania",
       "score": 0,
       "position": 2,
-      "passed_turns_count": 0
+      "passed_turns_count": 0,
+      "remaining_time_ms": 600000
     }
   ],
   "current_turn_user_id": 2,
@@ -215,6 +226,13 @@ Typowe statusy:
 ```
 
 `rack` jest zwracany tylko dla aktualnie autoryzowanego użytkownika. Rack przeciwnika nie jest ujawniany w API.
+
+Pola czasu:
+
+- `time_limit_enabled` mówi, czy gra używa limitu czasu.
+- `remaining_time_ms` to pozostały czas gracza w milisekundach. Gdy limit czasu jest wyłączony, pole ma wartość `null`.
+- `turn_started_at` wskazuje moment rozpoczęcia aktualnie liczonej tury. Gdy limit czasu jest wyłączony, pole ma wartość `null`.
+- `current_turn_deadline_at` wskazuje serwerowy deadline aktualnej tury. Klient może używać go do lokalnego odliczania między aktualizacjami HTTP/WebSocket.
 
 ### Move
 
@@ -321,10 +339,14 @@ Response `200 OK`:
         "score": 0,
         "position": 1,
         "passed_turns_count": 0,
+        "remaining_time_ms": 600000,
         "rack": []
       }
     ],
     "current_turn_user_id": null,
+    "time_limit_enabled": true,
+    "turn_started_at": null,
+    "current_turn_deadline_at": null,
     "winner_id": null,
     "started_at": null,
     "finished_at": null,
@@ -346,8 +368,12 @@ Autoryzacja: wymaga.
 Request: pusty body lub JSON. Pole `opponent_username` nie jest używane w MVP, ponieważ drugi gracz dołącza przez osobny endpoint.
 
 ```json
-{}
+{
+  "time_limit_enabled": true
+}
 ```
+
+`time_limit_enabled` jest opcjonalne i domyślnie ma wartość `true`. Ustawienie `false` tworzy grę bez limitu czasu; wtedy `remaining_time_ms`, `turn_started_at` i `current_turn_deadline_at` są zwracane jako `null`.
 
 Response `201 Created`: obiekt `Game`.
 
@@ -437,6 +463,12 @@ Reguły:
 - Gra musi mieć dokładnie 2 graczy.
 - `started_at` jest ustawiane przez backend.
 - `current_turn_user_id` jest ustawiane przez backend.
+- Jeśli `time_limit_enabled` ma wartość `true`, każdy gracz zaczyna z `600000` ms, czyli 10 minutami na wszystkie swoje ruchy.
+- Czas zmniejsza się tylko graczowi, którego wskazuje `current_turn_user_id`.
+- Jeśli jednemu graczowi skończy się czas, tura jest automatycznie ustawiana na gracza, który nadal ma czas.
+- Jeśli obu graczom skończy się czas, gra kończy się ze statusem `finished` i bez zwycięzcy (`winner_id: null`).
+- Najdłuższy możliwy czas gry z włączonym limitem wynosi 20 minut łącznego czasu zegarowego graczy.
+- Backend synchronizuje zegar przy odczytach i ruchach, a w produkcji także cyklicznym zadaniem Solid Queue uruchamianym w kontenerze aplikacji.
 
 Błędy:
 
@@ -492,7 +524,9 @@ Wspólne reguły:
 - Gra musi mieć status `active`.
 - Ruch może wykonać tylko `current_turn_user_id`.
 - Klient nie może decydować o `score`, `winner_id` ani `current_turn_user_id`.
-- Po ruchu tura przechodzi na drugiego gracza, z wyjątkiem zakończenia gry przez `resign`.
+- Po ruchu tura przechodzi na drugiego gracza, z wyjątkiem zakończenia gry przez `resign` albo sytuacji, w której drugi gracz nie ma już czasu.
+- Ruch inny niż `pass` resetuje licznik kolejnych passów obu graczy.
+- Gra kończy się, gdy obaj gracze wykonają po 3 ruchy `pass` z rzędu bez przerwania tej serii ruchem innego typu.
 
 Błędy wspólne:
 
@@ -501,7 +535,7 @@ Błędy wspólne:
 - `404` gdy gra nie istnieje.
 - `422` gdy gra nie jest aktywna, nie jest tura użytkownika lub ruch jest niepoprawny.
 
-### pass
+### pass / skip
 
 Pomija turę gracza.
 
@@ -512,6 +546,8 @@ Request:
   "move_type": "pass"
 }
 ```
+
+`skip` jest akceptowany jako alias i zapisuje ruch jako `move_type: "pass"`.
 
 Response `201 Created`: obiekt `Move` z `move_type: "pass"` i `score: 0`.
 
